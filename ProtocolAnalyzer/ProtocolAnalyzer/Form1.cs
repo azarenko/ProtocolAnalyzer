@@ -8,6 +8,8 @@ using System.Threading;
 using System.Windows.Forms;
 using FTD2XX_NET;
 using ProtocolAnalyzer.Properties;
+using System.Globalization;
+using System.Diagnostics;
 
 namespace ProtocolAnalyzer
 {
@@ -20,6 +22,7 @@ namespace ProtocolAnalyzer
         {
             InitializeComponent();
             lin_raw_receive_Func_handler = new DoWorkEventHandler(lin_raw_receive_Func);
+            lin_raw_repeat_handler = new EventHandler(lin_raw_repeat_func);
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -78,6 +81,12 @@ namespace ProtocolAnalyzer
 
         private void _connect_Click(object sender, EventArgs e)
         {
+            if (deviceList == null)
+            {
+                ShowError("No device to open");
+                return;
+            }
+
             if (deviceList.Length == 0)
             {
                 ShowError("No device to open");
@@ -122,8 +131,11 @@ namespace ProtocolAnalyzer
         private void lin_raw_receive_Func(object sender, DoWorkEventArgs e)
         {
             BackgroundWorker worker = sender as BackgroundWorker;
-            byte[] buffer = new byte[128];
-            int pointer = 0;
+            byte[] readbuffer = new byte[128];
+            byte[] pipebuffer = new byte[1024];
+            int pipepointer = 0;
+            uint availableBytes = 0;
+            uint readedBytes = 0;
 
             do
             {
@@ -135,12 +147,26 @@ namespace ProtocolAnalyzer
 
                 if (ftdi.IsOpen)
                 {
-                    
+                    availableBytes = 0;
+                    FTDI.FT_STATUS ftStatus = ftdi.GetRxBytesAvailable(ref availableBytes);
+                    if (ftStatus == FTDI.FT_STATUS.FT_OK)
+                    {
+                        if (availableBytes > 0)
+                        {
+                            ftStatus = ftdi.Read(readbuffer, availableBytes, ref readedBytes);
+                            if (ftStatus == FTDI.FT_STATUS.FT_OK)
+                            {
+                                //Utilites.CopyToByteArray(pipebuffer, readbuffer, pipepointer, 0, (int)readedBytes);
+                                //pipepointer += (int)readedBytes;
+                            }
+                        }
+                    }
                 }
                 else
                 {
                     break;
                 }
+                Thread.Sleep(1);
             }
             while (true);
         }
@@ -209,7 +235,7 @@ namespace ProtocolAnalyzer
             ,bool dtr
             ,bool rts)
         {
-            var ftStatus = ftdi.SetBaudRate(baudrate);
+            FTDI.FT_STATUS ftStatus = ftdi.SetBaudRate(baudrate);
             if (ftStatus != FTDI.FT_STATUS.FT_OK)
             {                
                 return ftStatus;
@@ -251,6 +277,166 @@ namespace ProtocolAnalyzer
         private void Form1_FormClosing(object sender, FormClosingEventArgs e)
         {
             Settings.Default.Save();
+        }
+
+        private void _lin_raw_send_data_Click(object sender, EventArgs e)
+        {
+            if (!ftdi.IsOpen)
+            {
+                ShowError("Device is not open");
+                return;
+            }
+
+            if (!backgroundWorker1.IsBusy)
+            {
+                ShowError("Device is attached");
+                return;
+            }
+
+            byte identifier, data, checksum;
+
+            if (!byte.TryParse(_lin_raw_identifier.Text, NumberStyles.HexNumber, null, out identifier))
+            {
+                ShowError("Identifier have invalid format");
+                return;
+            }
+
+            if(!byte.TryParse(_lin_raw_data.Text, NumberStyles.HexNumber, null, out data))
+            {
+                ShowError("Identifier have data format");
+                return;
+            }
+
+            if (!byte.TryParse(_lin_raw_checksum.Text, NumberStyles.HexNumber, null, out checksum))
+            {
+                ShowError("Identifier have checksum format");
+                return;
+            }
+            
+            FTDI.FT_STATUS status = lin_raw_send_data(Convert.ToUInt32(_lin_raw_baudrate.Value), identifier, data, checksum);
+            if (status != FTDI.FT_STATUS.FT_OK)
+            {
+                ShowError("Failed to set data characteristics (error " + status.ToString() + ")");
+            }
+        }
+
+        private FTDI.FT_STATUS lin_raw_send_data(uint baudrate, byte identifier, byte data, byte checksum)
+        {
+            Stopwatch sw = new Stopwatch();
+
+            FTDI.FT_STATUS status = FTDI.FT_STATUS.FT_OK;
+
+            if (!ftdi.IsOpen)
+            {
+                status = FTDI.FT_STATUS.FT_INVALID_HANDLE;
+                return status;
+            }
+
+            uint syncbreakBaudRate = (uint)(baudrate / 1.3);
+            long ticks = Stopwatch.Frequency / (syncbreakBaudRate / 13);
+
+            status = ftdi.SetBaudRate(syncbreakBaudRate);
+            if (status != FTDI.FT_STATUS.FT_OK)
+            {
+                return status;
+            }
+
+            sw.Start();
+
+            uint writtenbytes = 0;
+            status = ftdi.Write(new byte[1] { 0x00 }, 1, ref writtenbytes);
+
+            if (status != FTDI.FT_STATUS.FT_OK)
+            {
+                return status;
+            }
+
+            while(sw.ElapsedTicks < ticks) { };
+
+            sw.Stop();
+
+            status = ftdi.SetBaudRate(baudrate);
+            if (status != FTDI.FT_STATUS.FT_OK)
+            {
+                return status;
+            }
+
+            byte[] buffer = new byte[4] { 0x55, identifier, data, checksum };
+            status = ftdi.Write(buffer, 4, ref writtenbytes);
+
+            if (status != FTDI.FT_STATUS.FT_OK)
+            {
+                return status;
+            }
+
+            if(writtenbytes != buffer.Length)
+            {
+                return FTDI.FT_STATUS.FT_FAILED_TO_WRITE_DEVICE;
+            }
+
+            return status;
+        }
+
+        private void _lin_raw_repeat_CheckedChanged(object sender, EventArgs e)
+        {
+            if (!ftdi.IsOpen)
+            {
+                ShowError("Device is not open");
+                return;
+            }
+
+            if (!backgroundWorker1.IsBusy)
+            {
+                ShowError("Device is attached");
+                return;
+            }
+
+            CheckBox cb = (CheckBox)sender;
+
+            if (cb.Checked)
+            {
+                if (!timer1.Enabled)
+                {
+                    timer1.Interval = (int)_lin_raw_repeat_value.Value;
+                    timer1.Tick += lin_raw_repeat_handler;
+                    timer1.Start();
+                }
+            }
+            else
+            {
+                timer1.Stop();
+                timer1.Tick -= lin_raw_repeat_handler;
+            }
+        }
+
+        private EventHandler lin_raw_repeat_handler;
+        private void lin_raw_repeat_func(object sender, EventArgs e)
+        {
+            byte identifier, data, checksum;
+
+            if (!byte.TryParse(_lin_raw_identifier.Text, NumberStyles.HexNumber, null, out identifier))
+            {
+                ShowError("Identifier have invalid format");
+                return;
+            }
+
+            if (!byte.TryParse(_lin_raw_data.Text, NumberStyles.HexNumber, null, out data))
+            {
+                ShowError("Identifier have data format");
+                return;
+            }
+
+            if (!byte.TryParse(_lin_raw_checksum.Text, NumberStyles.HexNumber, null, out checksum))
+            {
+                ShowError("Identifier have checksum format");
+                return;
+            }
+
+            FTDI.FT_STATUS status = lin_raw_send_data(Convert.ToUInt32(_lin_raw_baudrate.Value), identifier, data, checksum);
+            if (status != FTDI.FT_STATUS.FT_OK)
+            {
+                ShowError("Failed to set data characteristics (error " + status.ToString() + ")");
+            }
         }
     }
 }
