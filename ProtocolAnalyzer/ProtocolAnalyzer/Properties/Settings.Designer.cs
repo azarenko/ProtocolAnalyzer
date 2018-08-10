@@ -8,22 +8,66 @@
 // </auto-generated>
 //------------------------------------------------------------------------------
 
-namespace ProtocolAnalyzer.Properties
-{
-
-
+namespace ProtocolAnalyzer.Properties {
+    
+    
     [global::System.Runtime.CompilerServices.CompilerGeneratedAttribute()]
-    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "11.0.0.0")]
-    internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase
-    {
-
+    [global::System.CodeDom.Compiler.GeneratedCodeAttribute("Microsoft.VisualStudio.Editors.SettingsDesigner.SettingsSingleFileGenerator", "15.3.0.0")]
+    internal sealed partial class Settings : global::System.Configuration.ApplicationSettingsBase {
+        
         private static Settings defaultInstance = ((Settings)(global::System.Configuration.ApplicationSettingsBase.Synchronized(new Settings())));
-
-        public static Settings Default
-        {
-            get
-            {
+        
+        public static Settings Default {
+            get {
                 return defaultInstance;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("19200")]
+        public decimal lin_raw_baudrate {
+            get {
+                return ((decimal)(this["lin_raw_baudrate"]));
+            }
+            set {
+                this["lin_raw_baudrate"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("01")]
+        public string lin_raw_identifier {
+            get {
+                return ((string)(this["lin_raw_identifier"]));
+            }
+            set {
+                this["lin_raw_identifier"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("01")]
+        public string lin_raw_data {
+            get {
+                return ((string)(this["lin_raw_data"]));
+            }
+            set {
+                this["lin_raw_data"] = value;
+            }
+        }
+        
+        [global::System.Configuration.UserScopedSettingAttribute()]
+        [global::System.Diagnostics.DebuggerNonUserCodeAttribute()]
+        [global::System.Configuration.DefaultSettingValueAttribute("500")]
+        public decimal lin_raw_repeat {
+            get {
+                return ((decimal)(this["lin_raw_repeat"]));
+            }
+            set {
+                this["lin_raw_repeat"] = value;
             }
         }
     }
