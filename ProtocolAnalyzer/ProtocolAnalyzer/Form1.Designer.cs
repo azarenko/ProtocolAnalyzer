@@ -300,6 +300,10 @@
             this.label3.TabIndex = 2;
             this.label3.Text = "b/sec";
             // 
+            // backgroundWorker1
+            // 
+            this.backgroundWorker1.WorkerSupportsCancellation = true;
+            // 
             // _lin_raw_attachtodevice
             // 
             this._lin_raw_attachtodevice.AutoSize = true;
