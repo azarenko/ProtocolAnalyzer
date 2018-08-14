@@ -10,6 +10,7 @@ using FTD2XX_NET;
 using ProtocolAnalyzer.Properties;
 using System.Globalization;
 using System.Diagnostics;
+using ProtocolAnalyzer.DataClasses;
 
 namespace ProtocolAnalyzer
 {
@@ -126,6 +127,8 @@ namespace ProtocolAnalyzer
             
             _statusInfo.Text = "Disconnected";
         }
+       
+        private List<LinDataItem> LinLog = new List<LinDataItem>();
 
         private DoWorkEventHandler lin_raw_receive_Func_handler;
         private void lin_raw_receive_Func(object sender, DoWorkEventArgs e)
